@@ -1,0 +1,7 @@
+<launch>
+	<node name="vision_node" pkg="myworkcell_core" type="vision_node" output="screen"/>
+	<node name="myworkcell_node" pkg="myworkcell_core" type="myworkcell_node" output="screen" required="true">
+		<param name="base_frame" value="world"/>
+	</node>
+</launch>
+

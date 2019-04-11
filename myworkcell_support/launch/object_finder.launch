@@ -1,0 +1,8 @@
+<launch>
+
+
+<node pkg="aruco_ros" type="single" name="aruco_single" output="screen">
+<remap from="/image" to="/usb_cam/camera_info" />
+</node>
+
+</launch>

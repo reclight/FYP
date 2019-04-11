@@ -1,0 +1,13 @@
+<launch>
+	<include file="$(find realsense2_camera)/launch/rs_rgbd.launch"/>
+	<node name="mask_rcnn" pkg="mask_rcnn_ros" type="mask_rcnn_small" output="screen"/>
+	<node name="point_cloud" pkg="point_cloud" type="point_cloud_node" output="screen"/>
+	<include file="$(find myworkcell_moveit_config)/launch/myworkcell_planning_execution.launch"/>
+	<node name="vision_node" pkg="myworkcell_core" type="vision_node" output="screen"/>
+	<node name="myworkcell_node" pkg="myworkcell_core" type="myworkcell_node" output="screen">
+		<param name="base_frame" value="world"/>
+	</node>
+	<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch">
+		<arg name="port" value="9090" />
+	</include>
+</launch>

@@ -1,0 +1,308 @@
+<html>
+<head>
+<meta charset="utf-8" />
+
+<script src="./scripts/roslib.min.js"></script>
+<script src="./scripts/eventemitter2.min.js"></script>
+<link rel="stylesheet" href="./css/bootstrap.min.css">
+<title>UR FYP Pick and Place User Interface </title>
+
+<script type="text/javascript" type="text/javascript">
+//initialize variables
+var products=new Array();
+var productlist=["Head & Shoulders", "Koko Krunch", "Butter Cookies", "Kitkat", "Milo", "Nivea", "Oreo", "Wild About Nerds"]
+var productidlist = new Array();
+var connectstatus = false;
+
+//Connecting to ROS
+var ros = new ROSLIB.Ros({
+    url : 'ws://localhost:9090'
+})
+
+ros.on('connection', function(){
+    console.log('Connected to websocket server');
+    document.getElementById("connectStatus").innerHTML="<div class='alert alert-light' role='alert'>Status: Connected</div>";
+    connectstatus = true;
+});
+
+ros.on('error', function(error){
+    console.log('Error connecting to websocket server: ', error);
+    document.getElementById("connectStatus").innerHTML="<div class='alert alert-danger' role='alert'>Status: Not Connected</div>";
+    connectstatus = false;
+});
+
+ros.on('close', function(){
+    console.log('Connection to websocket server closed.');
+    document.getElementById("connectStatus").innerHTML="<div class='alert alert-danger' role='alert'>Status: Connection closed</div>";
+    connectstatus = false;
+});
+
+//Publishing a topic
+function changeproduct(product) {
+    var product_pub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/main_program/Object',
+        messageType : 'std_msgs/Int32'
+    });
+
+    var product_msg = new ROSLIB.Message({
+        data: product
+    });
+
+    product_pub.publish(product_msg);
+}
+
+function AddProduct(){
+    var productId = parseInt(document.getElementById("productChoice").value);
+    var product = productlist[productId-1];
+    var previousvalue= null;
+    var counter = 1;
+    productidlist.push(productId);
+    products.push(product);
+    
+    console.log(products);
+    PrintProductList();
+}
+
+function RemoveProduct(){
+    products.pop();
+    productidlist.pop();
+    PrintProductList();
+}
+
+function PrintProductList(){
+    var content = ""
+    products.forEach(function(element, idx, array){
+        if(idx==0)
+        {
+            counter = 1;
+        }
+        else if(element == previousvalue)
+        {
+            counter+=1;
+        }
+        else if(element!=previousvalue){
+            content += '<li class="list-group-item d-flex justify-content-between align-items-center">'+previousvalue+'<span class="badge badge-primary badge-pill">'+counter+'</span></li>'
+            counter = 1;
+        }
+        if(idx === array.length - 1){
+            content += '<li class="list-group-item d-flex justify-content-between align-items-center">'+element+'<span class="badge badge-primary badge-pill">'+counter+'</span></li>'
+        }
+        previousvalue = element;
+    });
+    document.getElementById("SelectedProducts").innerHTML = content;
+}
+
+function wait(ms)
+{
+    var d = new Date();
+    var d2 = null;
+    do{
+        d2 = new Date();
+    } 
+    while(d2-d < ms);
+}
+
+//calll rosservice
+function sendRobot(targetproduct) {
+    return new Promise(function(resolve, reject){
+        if(connectstatus){
+            //productidlist.forEach(function(targetproduct){
+                var moveRobotClient = new ROSLIB.Service({
+                    ros : ros,
+                    name : '/move_robot',
+                    serviceType : 'std_srvs/Trigger'
+                });
+
+                var request = new ROSLIB.ServiceRequest({
+
+                })
+                var callresponse= null;
+                changeproduct(targetproduct);
+                wait(5000);
+
+                console.log("Calling robot to pick "+targetproduct);
+
+                moveRobotClient.callService(request, function(result){
+                    console.log('Result for service call on '+moveRobotClient.name + ': '+result.success);
+                    callresponse = result.success;
+                    console.log(callresponse);
+                    if(result.success)
+                    {
+                        document.getElementById("statusMessage").innerHTML="<div class='alert alert-success' role='alert'>Move Robot Success!</div>";
+                        resolve(result);
+                    }
+                    if(!result.success)
+                    {
+                        document.getElementById("statusMessage").innerHTML="<div class='alert alert-warning' role='alert'>Move Robot Failed : "+result.message+"</div>";
+                        console.log('error message: '+result.message);
+                        resolve(result);
+                    }
+                });
+            //});
+        }
+        else
+        {
+            alert("Check your websocket status");
+            reject(error);
+        }
+    });
+}
+
+async function handleQueue(){
+    if(productidlist.length === 0)
+    {
+        return true;
+    }
+    else{
+        await sendRobot(productidlist[0]);
+        productidlist.shift();
+        await handleQueue();
+    }
+}
+
+</script>
+
+<style>
+@font-face{
+  font-family:'BigJohnPRO-Light';
+  src:url('./fonts/BigJohnPro-Light.otf');
+}
+
+@font-face{
+  font-family:'BigJohnPRO-Regular';
+  src:url('./fonts/BigJohnPro-Regular.otf');
+}
+
+@font-face{
+  font-family:'BigJohnPRO-Bold';
+  src:url('./fonts/BigJohnPro-Bold.otf');
+}
+
+@font-face{
+  font-family:'Poppins-Semibold';
+  src:url('./fonts/Poppins-SemiBold.otf');
+}
+
+@font-face{
+  font-family:'Poppins-Light';
+  src:url('./fonts/Poppins-Light.otf');
+}
+
+.container{
+    margin:auto;
+    border-radius: 10px;
+    transition: 1s all;
+}
+
+.container:hover{
+    border-radius: 30px;
+    box-shadow: 5px 10px 10px rgba(0, 0, 0, 0.5);
+}
+
+.selectoption
+{
+  padding: 10px 15px 10px 15px;
+  display:block;
+  width:100%;
+  font-size: 14px;
+  line-height: 1.42857143;
+  color: #555;
+  background-color: #fff;
+  background-image: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+body{
+    padding: 50px;
+    background-color:rgba(137, 196, 244, 0.2);
+    
+}
+
+.container{
+    background-color: #fff;
+    padding: 30px 40px 70px 40px;
+}
+
+.form-group{
+    width:70%;
+    margin: auto;
+}
+
+.alert{
+    margin: 30px auto;
+    
+}
+
+.header
+{
+    padding:40px 5px 40px 5px;
+    text-align:center;
+}
+ 
+.header h1{
+    font-family: 'Poppins-Light'
+}
+
+.productList{
+    width: 70%;
+    margin: auto;
+}
+
+button, ul{
+    margin: 20px 0 20px 0;
+}
+
+#connectStatus{
+    margin: 0px 50px 0px 50px;
+}
+
+#statusMessage{
+    margin: 0px 50px 0px 50px;
+    text-align: center;
+}
+
+</style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>UR Pick and Place</h1>
+            <hr />
+            <div id="connectStatus"></div>
+            <!--img src="mir.png" class="img-rounded"  style ="width:15%;" alt="Cinque Terre"-->
+        </div>
+        <div class="Row">
+            <div class="col-sm">
+                <form class="form-group" action="#" onsubmit="return false">
+                    <label for="productChoice">Select Product :</label>
+                    <select class="selectoption" name="productChoice" id="productChoice" onchange="changeproduct()">
+                        <option value="1" name="Head & Shoulders">Head & Shoulders</option>
+                        <option value="2" name="Koko Krunch">Koko Krunch</option>
+                        <option value="3" name="Butter Cookies">Butter Cookies</option>
+                        <option value="4" name="KitKat">Kitkat</option>
+                        <option value="5" name="Milo">Milo</option>
+                        <option value="6" name="Nivea">Nivea</option>
+                        <option value="7" name="Oreo">Oreo</option>
+                        <option value="8" name="Wild About Nerds">Wild about Nerds</option>
+                    </select>
+                    <br />
+                    <button class="btn btn-outline-secondary" onclick="AddProduct()" id="submit">Add</button>
+                    <button class="btn btn-outline-secondary" onclick="RemoveProduct()" id="submit">Remove</button>
+                </form>
+            </div>
+            <div class="col-sm">
+                <div class="ProductList">
+                    Selected products:
+                    <br />
+                    <ul class="list-group" id="SelectedProducts">
+                    </ul>
+                    <button class="btn btn-outline-primary" id="moverobot" onclick="handleQueue()">Send Command</button>
+                </div>
+            </div>
+        </div>
+        <div id="statusMessage"></div>
+    </div>
+</body>

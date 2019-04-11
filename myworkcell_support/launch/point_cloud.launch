@@ -1,0 +1,6 @@
+<launch>
+	<node name="ui_node" pkg="myworkcell_core" type="mainprogram.py" output="screen" />
+	<include file="$(find realsense2_camera)/launch/rs_rgbd.launch"/>
+	<node name="mask_rcnn" pkg="mask_rcnn_ros" type="mask_rcnn_node" output="screen"/>
+	<node name="sub_pcl" pkg="point_cloud" type="point_cloud_node" output="screen"/>
+</launch>
